@@ -81,7 +81,7 @@ type defaultBinder struct {
 
 func (db *defaultBinder) Bind(p *v1.Pod, hostname string) error {
 	if err := db.kubeclient.CoreV1().Pods(p.Namespace).Bind(&v1.Binding{
-		ObjectMeta: metav1.ObjectMeta{Namespace: p.Namespace, Name: p.Name, UID: p.UID},
+		ObjectMeta: metav1.ObjectMeta{Namespace: p.Namespace, Name: p.Name, UID: p.UID, Annotations: p.Annotations},
 		Target: v1.ObjectReference{
 			Kind: "Node",
 			Name: hostname,

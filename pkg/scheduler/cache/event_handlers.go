@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/kubernetes-incubator/kube-arbitrator/contrib/device-plugin-dll"
 	arbv1 "github.com/kubernetes-incubator/kube-arbitrator/pkg/apis/scheduling/v1alpha1"
 	"github.com/kubernetes-incubator/kube-arbitrator/pkg/apis/utils"
 	arbapi "github.com/kubernetes-incubator/kube-arbitrator/pkg/scheduler/api"
@@ -237,6 +238,8 @@ func (sc *SchedulerCache) addNode(node *v1.Node) error {
 		sc.Nodes[node.Name] = arbapi.NewNodeInfo(node)
 	}
 
+	device_plugin_dll.GlobalGpuSchedulerPlugin.AddNode(node.Name, node.Annotations)
+
 	return nil
 }
 
@@ -253,6 +256,8 @@ func (sc *SchedulerCache) updateNode(oldNode, newNode *v1.Node) error {
 		return nil
 	}
 
+	device_plugin_dll.GlobalGpuSchedulerPlugin.UpdateNode(newNode.Name, newNode.Annotations)
+
 	return fmt.Errorf("node <%s> does not exist", newNode.Name)
 }
 
@@ -262,6 +267,9 @@ func (sc *SchedulerCache) deleteNode(node *v1.Node) error {
 		return fmt.Errorf("node <%s> does not exist", node.Name)
 	}
 	delete(sc.Nodes, node.Name)
+
+	device_plugin_dll.GlobalGpuSchedulerPlugin.DeleteNode(node.Name)
+
 	return nil
 }
 
