@@ -131,7 +131,7 @@ func (alloc *allocateAction) Execute(ssn *framework.Session) {
 					glog.V(3).Infof("Binding Task <%v/%v> to node <%v>",
 						task.Namespace, task.Name, node.Name)
 
-					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
+					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, task.Resreq.ExtendDevices)
 					if nodeScore > bestNodeScore {
 						bestNode = node
 						bestNodeScore = nodeScore
@@ -144,7 +144,7 @@ func (alloc *allocateAction) Execute(ssn *framework.Session) {
 					glog.V(3).Infof("Pipelining Task <%v/%v> to node <%v> for <%v> on <%v>",
 						task.Namespace, task.Name, node.Name, task.Resreq, node.Releasing)
 
-					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
+					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, task.Resreq.ExtendDevices)
 					if nodeScore > bestNodeScore {
 						bestNode = node
 						bestNodeScore = nodeScore
