@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	"plugin"
 )
 
-var schedulerPluginHolder map[string]SchedulerPlugin
+var schedulerPluginHolder map[v1.ResourceName]SchedulerPlugin
 
 func RegisterDLL(dllpath string) (SchedulerPlugin, error) {
 	p := SchedulerPlugin{}
-	/*var dlfunc interface{}
+	var dlfunc interface{}
 	pdll, err := plugin.Open(dllpath)
 	if err != nil {
 		glog.Errorf("Open DLL Fail")
@@ -82,7 +83,7 @@ func RegisterDLL(dllpath string) (SchedulerPlugin, error) {
 	}
 	p.OnRemoveTask = dlfunc.(func(string, map[string]string))
 
-	glog.V(3).Infof("SchedulerPlugin init success")*/
+	glog.V(3).Infof("SchedulerPlugin init success")
 
 	return p, nil
 }
@@ -103,7 +104,7 @@ func SearchPlugin(dirpath string) error {
 	}
 	// Init schedulerPluginHolder
 	if schedulerPluginHolder == nil {
-		schedulerPluginHolder = make(map[string]SchedulerPlugin)
+		schedulerPluginHolder = make(map[v1.ResourceName]SchedulerPlugin)
 	}
 	// Register each plugin
 	for _, file := range files {
@@ -115,9 +116,8 @@ func SearchPlugin(dirpath string) error {
 			glog.V(3).Infof("Give up dll plugin - %s", dllpath)
 			continue
 		}
-		continue
 		schedulerPlugin.Init()
-		resourceName := schedulerPlugin.GetResourceName()
+		resourceName := v1.ResourceName(schedulerPlugin.GetResourceName())
 		schedulerPluginHolder[resourceName] = schedulerPlugin
 	}
 	return nil
@@ -148,10 +148,17 @@ func OnDeleteNode(node *v1.Node) {
 }
 
 // TODO
-func AssessTaskAndNode(nodeName string, requireNum int) (int, map[string]string) {
+func AssessTaskAndNode(nodeName string, extendDevices map[v1.ResourceName]float64) (int, map[string]string) {
 	nodeScore := 0
 	nodeAnnotation := make(map[string]string)
-	for _, scheplugin := range schedulerPluginHolder {
+	for rName, rValue := range extendDevices {
+		scheplugin, ok := schedulerPluginHolder[rName]
+		// If this device has no scheduler plugin
+		if !ok {
+			continue
+		}
+		requireNum := int(rValue)
+		// Call scheduler plugin
 		resourceScore, resourceAnnotation := scheplugin.AssessTaskAndNode(nodeName, requireNum)
 		// Store in nodeScore and nodeAnnotatoin
 		if resourceScore < 0 || nodeScore < 0 {

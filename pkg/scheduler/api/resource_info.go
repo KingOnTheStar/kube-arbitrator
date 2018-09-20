@@ -24,9 +24,10 @@ import (
 )
 
 type Resource struct {
-	MilliCPU float64
-	Memory   float64
-	MilliGPU float64
+	MilliCPU      float64
+	Memory        float64
+	MilliGPU      float64
+	ExtendDevices map[v1.ResourceName]float64
 }
 
 const (
@@ -36,17 +37,22 @@ const (
 
 func EmptyResource() *Resource {
 	return &Resource{
-		MilliCPU: 0,
-		Memory:   0,
-		MilliGPU: 0,
+		MilliCPU:      0,
+		Memory:        0,
+		MilliGPU:      0,
+		ExtendDevices: make(map[v1.ResourceName]float64),
 	}
 }
 
 func (r *Resource) Clone() *Resource {
 	clone := &Resource{
-		MilliCPU: r.MilliCPU,
-		Memory:   r.Memory,
-		MilliGPU: r.MilliGPU,
+		MilliCPU:      r.MilliCPU,
+		Memory:        r.Memory,
+		MilliGPU:      r.MilliGPU,
+		ExtendDevices: make(map[v1.ResourceName]float64),
+	}
+	for k, v := range r.ExtendDevices {
+		clone.ExtendDevices[k] = v
 	}
 	return clone
 }
@@ -65,6 +71,10 @@ func NewResource(rl v1.ResourceList) *Resource {
 			r.Memory += float64(rQuant.Value())
 		case GPUResourceName:
 			r.MilliGPU += float64(rQuant.MilliValue())
+			// GPU is an extend device too
+			r.ExtendDevices[rName] = float64(rQuant.Value())
+		default:
+			r.ExtendDevices[rName] = float64(rQuant.Value())
 		}
 	}
 	return r
@@ -83,7 +93,8 @@ func (r *Resource) IsZero(rn v1.ResourceName) bool {
 	case GPUResourceName:
 		return r.MilliGPU < minMilliGPU
 	default:
-		panic("unknown resource")
+		//panic("unknown resource")
+		return r.ExtendDevices[rn] == 0
 	}
 }
 
@@ -91,6 +102,13 @@ func (r *Resource) Add(rr *Resource) *Resource {
 	r.MilliCPU += rr.MilliCPU
 	r.Memory += rr.Memory
 	r.MilliGPU += rr.MilliGPU
+	for rName, rValue := range rr.ExtendDevices {
+		// If the resource doesn't exist
+		if _, ok := r.ExtendDevices[rName]; !ok {
+			r.ExtendDevices[rName] = 0
+		}
+		r.ExtendDevices[rName] += rValue
+	}
 	return r
 }
 
@@ -100,6 +118,9 @@ func (r *Resource) Sub(rr *Resource) *Resource {
 		r.MilliCPU -= rr.MilliCPU
 		r.Memory -= rr.Memory
 		r.MilliGPU -= rr.MilliGPU
+		for rName, rValue := range rr.ExtendDevices {
+			r.ExtendDevices[rName] -= rValue
+		}
 		return r
 	}
 
@@ -111,22 +132,45 @@ func (r *Resource) Multi(ratio float64) *Resource {
 	r.MilliCPU = r.MilliCPU * ratio
 	r.Memory = r.Memory * ratio
 	r.MilliGPU = r.MilliGPU * ratio
+	for rName, rValue := range r.ExtendDevices {
+		r.ExtendDevices[rName] = rValue * ratio
+	}
 	return r
 }
 
 func (r *Resource) Less(rr *Resource) bool {
+	for rName, rValue := range r.ExtendDevices {
+		// If the resource doesn't exist
+		if _, ok := rr.ExtendDevices[rName]; !ok {
+			return false
+		}
+		// If r has a Resource >= rr
+		if rValue >= rr.ExtendDevices[rName] {
+			return false
+		}
+	}
 	return r.MilliCPU < rr.MilliCPU && r.Memory < rr.Memory && r.MilliGPU < rr.MilliGPU
 }
 
 func (r *Resource) LessEqual(rr *Resource) bool {
+	for rName, rValue := range r.ExtendDevices {
+		// If the resource doesn't exist
+		if _, ok := rr.ExtendDevices[rName]; !ok {
+			return false
+		}
+		// If r has a Resource >= rr
+		if rValue > rr.ExtendDevices[rName] {
+			return false
+		}
+	}
 	return (r.MilliCPU < rr.MilliCPU || math.Abs(rr.MilliCPU-r.MilliCPU) < minMilliCPU) &&
 		(r.Memory < rr.Memory || math.Abs(rr.Memory-r.Memory) < minMemory) &&
 		(r.MilliGPU < rr.MilliGPU || math.Abs(rr.MilliGPU-r.MilliGPU) < minMilliGPU)
 }
 
 func (r *Resource) String() string {
-	return fmt.Sprintf("cpu %0.2f, memory %0.2f, GPU %0.2f",
-		r.MilliCPU, r.Memory, r.MilliGPU)
+	return fmt.Sprintf("cpu %0.2f, memory %0.2f, GPU %0.2f, Extend(include GPU) %v",
+		r.MilliCPU, r.Memory, r.MilliGPU, r.ExtendDevices)
 }
 
 func (r *Resource) Get(rn v1.ResourceName) float64 {
@@ -138,10 +182,16 @@ func (r *Resource) Get(rn v1.ResourceName) float64 {
 	case GPUResourceName:
 		return r.MilliGPU
 	default:
-		panic("not support resource.")
+		//panic("not support resource.")
+		resource, ok := r.ExtendDevices[rn]
+		if !ok {
+			panic("no this resource.")
+		}
+		return resource
 	}
 }
 
 func ResourceNames() []v1.ResourceName {
+	// TODO: Should include the resource name which are in ExtendDevices
 	return []v1.ResourceName{v1.ResourceCPU, v1.ResourceMemory, GPUResourceName}
 }
