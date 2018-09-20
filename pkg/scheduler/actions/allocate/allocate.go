@@ -19,7 +19,7 @@ package allocate
 import (
 	"github.com/golang/glog"
 
-	"github.com/kubernetes-incubator/kube-arbitrator/contrib/device-plugin-dll"
+	"github.com/kubernetes-incubator/kube-arbitrator/contrib/scheduler-plugin"
 	"github.com/kubernetes-incubator/kube-arbitrator/pkg/scheduler/api"
 	"github.com/kubernetes-incubator/kube-arbitrator/pkg/scheduler/framework"
 	"github.com/kubernetes-incubator/kube-arbitrator/pkg/scheduler/util"
@@ -69,7 +69,7 @@ func (alloc *allocateAction) Execute(ssn *framework.Session) {
 	pendingTasks := map[api.JobID]*util.PriorityQueue{}
 
 	for {
-		device_plugin_dll.GlobalGpuSchedulerPlugin.HelloDLL("Test")
+		scheduler_plugin.HelloDLL("Test")
 		if queues.Empty() {
 			break
 		}
@@ -131,7 +131,7 @@ func (alloc *allocateAction) Execute(ssn *framework.Session) {
 					glog.V(3).Infof("Binding Task <%v/%v> to node <%v>",
 						task.Namespace, task.Name, node.Name)
 
-					nodeScore, nodeAnnotation := device_plugin_dll.GlobalGpuSchedulerPlugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
+					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
 					if nodeScore > bestNodeScore {
 						bestNode = node
 						bestNodeScore = nodeScore
@@ -144,7 +144,7 @@ func (alloc *allocateAction) Execute(ssn *framework.Session) {
 					glog.V(3).Infof("Pipelining Task <%v/%v> to node <%v> for <%v> on <%v>",
 						task.Namespace, task.Name, node.Name, task.Resreq, node.Releasing)
 
-					nodeScore, nodeAnnotation := device_plugin_dll.GlobalGpuSchedulerPlugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
+					nodeScore, nodeAnnotation := scheduler_plugin.AssessTaskAndNode(node.Name, int(task.Resreq.MilliGPU/1000))
 					if nodeScore > bestNodeScore {
 						bestNode = node
 						bestNodeScore = nodeScore

@@ -19,7 +19,7 @@ package api
 import (
 	"fmt"
 
-	"github.com/kubernetes-incubator/kube-arbitrator/contrib/device-plugin-dll"
+	"github.com/kubernetes-incubator/kube-arbitrator/contrib/scheduler-plugin"
 	"k8s.io/api/core/v1"
 )
 
@@ -115,7 +115,8 @@ func (ni *NodeInfo) PipelineTask(task *TaskInfo) error {
 
 	ni.Tasks[key] = ti
 
-	device_plugin_dll.GlobalGpuSchedulerPlugin.AddTask(ni.Name, task.Pod.Annotations)
+	// Inform scheduler plugin
+	scheduler_plugin.OnAddTask(ni.Node, task.Pod)
 
 	return nil
 }
@@ -141,7 +142,8 @@ func (ni *NodeInfo) AddTask(task *TaskInfo) error {
 
 	ni.Tasks[key] = ti
 
-	device_plugin_dll.GlobalGpuSchedulerPlugin.AddTask(ni.Name, task.Pod.Annotations)
+	// Inform scheduler plugin
+	scheduler_plugin.OnAddTask(ni.Node, task.Pod)
 
 	return nil
 }
@@ -166,7 +168,8 @@ func (ni *NodeInfo) RemoveTask(ti *TaskInfo) error {
 
 	delete(ni.Tasks, key)
 
-	device_plugin_dll.GlobalGpuSchedulerPlugin.RemoveTask(ni.Name, task.Pod.Annotations)
+	// Inform scheduler plugin
+	scheduler_plugin.OnRemoveTask(ni.Node, task.Pod)
 
 	return nil
 }
