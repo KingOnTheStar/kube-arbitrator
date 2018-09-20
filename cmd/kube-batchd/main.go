@@ -28,7 +28,7 @@ import (
 
 	"github.com/kubernetes-incubator/kube-arbitrator/cmd/kube-batchd/app"
 	"github.com/kubernetes-incubator/kube-arbitrator/cmd/kube-batchd/app/options"
-	"github.com/kubernetes-incubator/kube-arbitrator/contrib/device-plugin-dll"
+	"github.com/kubernetes-incubator/kube-arbitrator/contrib/scheduler-plugin"
 )
 
 var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")
@@ -47,8 +47,7 @@ func main() {
 	go wait.Until(glog.Flush, *logFlushFreq, wait.NeverStop)
 	defer glog.Flush()
 
-	//device_plugin_dll.GlobalGpuSchedulerPlugin.Init("/home/tusimple/go/src/device-scheduler-plugin/device-scheduler-plugin.so")
-	device_plugin_dll.GlobalGpuSchedulerPlugin.Init("/usr/local/kubernetes/kar_dll/device-scheduler-plugin.so")
+	scheduler_plugin.SearchPlugin("./kube-arbitrator/contrib/plugin-dll/")
 
 	if err := app.Run(s); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
